@@ -8,6 +8,7 @@ import './App.css';
  */
 interface IState {
   data: ServerRespond[],
+  showGraph: boolean, // A flag to toggle showing the Graph component
 }
 
 /**
@@ -22,25 +23,42 @@ class App extends Component<{}, IState> {
       // data saves the server responds.
       // We use this state to parse data down to the child element (Graph) as element property
       data: [],
+      showGraph: false,
     };
+  }
+
+  /**
+   * Toggle the showGraph flag when the button is clicked and
+   * start fetching data from the server every 100ms
+   */
+  handleToggleButtonClick() {
+    // Toggle the flag
+    this.setState({
+      showGraph: !this.state.showGraph,
+    });
+
+    // Start fetching data from the server every 100ms
+    const intervalId = setInterval(() => {
+      DataStreamer.getData((serverResponds: ServerRespond[]) => {
+        // Stop fetching data if the server does not return any data
+        if (serverResponds.length === 0) {
+          clearInterval(intervalId);
+        }
+
+        // Update the state by creating a new array of data that consists of
+        // Previous data in the state and the new data from server
+        this.setState({ data: [...this.state.data, ...serverResponds] });
+      });
+    }, 100);
   }
 
   /**
    * Render Graph react component with state.data parse as property data
    */
   renderGraph() {
-    return (<Graph data={this.state.data}/>)
-  }
-
-  /**
-   * Get new data from server and update the state with the new data
-   */
-  getDataFromServer() {
-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
-      // Update the state by creating a new array of data that consists of
-      // Previous data in the state and the new data from server
-      this.setState({ data: [...this.state.data, ...serverResponds] });
-    });
+    if (this.state.showGraph) {
+      return (<Graph data={this.state.data}/>);
+    }
   }
 
   /**
@@ -53,21 +71,18 @@ class App extends Component<{}, IState> {
           Bank & Merge Co Task 2
         </header>
         <div className="App-content">
-          <button className="btn btn-primary Stream-button"
-            // when button is click, our react app tries to request
-            // new data from the server.
-            // As part of your task, update the getDataFromServer() function
-            // to keep requesting the data every 100ms until the app is closed
-            // or the server does not return anymore data.
-            onClick={() => {this.getDataFromServer()}}>
-            Start Streaming Data
+          <button
+            className="btn btn-primary Stream-button"
+            onClick={() => this.handleToggleButtonClick()}
+          >
+            {this.state.showGraph ? 'Stop Streaming Data' : 'Start Streaming Data'}
           </button>
           <div className="Graph">
             {this.renderGraph()}
           </div>
         </div>
       </div>
-    )
+    );
   }
 }
 
